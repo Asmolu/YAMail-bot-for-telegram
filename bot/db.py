@@ -41,7 +41,7 @@ def save_user_token(user_id: int, token: str) -> None:
 def get_user_token(user_id: int) -> Optional[str]:
     with _get_connection() as conn:
         cursor = conn.execute(
-            "SELECT token FROM users WHERE user_id = ?", (user_id,)
+            "SELECT token FROM users WHERE user_id = ?", (user_id,),
         )
         row = cursor.fetchone()
     return row[0] if row else None

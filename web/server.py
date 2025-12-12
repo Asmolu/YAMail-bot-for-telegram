@@ -15,6 +15,10 @@ def setup_bot(bot: Bot) -> None:
     global _telegram_bot
     _telegram_bot = bot
 
+@app.get("/health")
+async def healthcheck():
+    return {"status": "ok"}
+
 
 @app.get("/oauth/callback")
 async def oauth_callback(code: str, state: Optional[str] = None):
