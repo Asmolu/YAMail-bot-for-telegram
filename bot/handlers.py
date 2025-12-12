@@ -46,8 +46,9 @@ async def connect_cmd(message: Message):
         return
 
     params = [
-        f"response_type=code",
+        "response_type=code",
         f"client_id={client_id}",
+        f"state={message.from_user.id}",
     ]
     if redirect_uri:
         params.append(f"redirect_uri={redirect_uri}")
@@ -56,7 +57,8 @@ async def connect_cmd(message: Message):
     await message.answer(
         "🔗 Для подключения Яндекс.Диска нажми:\n"
         f"{link}\n\n"
-        "После подтверждения доступа отправь мне полученный *код авторизации* сюда.",
+        "После подтверждения доступа я подключу диск автоматически."
+        " Если что-то пойдёт не так, можно отправить *код авторизации* сюда вручную.",
         parse_mode="Markdown",
     )
 
