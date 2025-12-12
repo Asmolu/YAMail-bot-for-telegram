@@ -5,7 +5,13 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
-from bot.db import get_user_token, save_user_token
+from bot.db import (
+    delete_user_token,
+    get_recent_files,
+    get_user_token,
+    save_uploaded_file,
+    save_user_token,
+)
 from bot.yandex_client import get_disk_info, upload_file_to_yandex
 import os
 
@@ -72,7 +78,40 @@ async def handle_auth_code(message: Message):
         return
 
     save_user_token(message.from_user.id, token)
-    await message.answer("✅ Успешно подключено! Теперь я буду сохранять файлы в твой Яндекс.Диск ☁️")
+    await message.answer(
+        "✅ Успешно подключено! Теперь я буду сохранять файлы в твой Яндекс.Диск ☁️\n"
+        "Просто пришли мне файл и он магическим образом появится на твоём Яндекс.Диск!"
+    )
+
+
+# 🔌 /disconect
+@router.message(Command("disconect"))
+async def disconnect_cmd(message: Message):
+    if not get_user_token(message.from_user.id):
+        await message.answer("⚠️ Ты ещё не подключал Яндекс.Диск. Используй /connect, чтобы начать.")
+        return
+
+    delete_user_token(message.from_user.id)
+    await message.answer("🔌 Привязка к Яндекс.Диску удалена. Когда захочешь вернуться — жду команду /connect.")
+
+
+# 📃 /list
+@router.message(Command("list"))
+async def list_cmd(message: Message):
+    if not get_user_token(message.from_user.id):
+        await message.answer("⚠️ Сначала подключи Яндекс.Диск через /connect.")
+        return
+
+    files = get_recent_files(message.from_user.id, limit=5)
+    if not files:
+        await message.answer("Пока нет загруженных файлов. Отправь любой файл, и я сохраню его на диск.")
+        return
+
+    lines = ["Последние 5 сохранённых файлов:"]
+    for idx, (file_name, uploaded_at) in enumerate(files, start=1):
+        lines.append(f"{idx}. {file_name} — {uploaded_at}")
+
+    await message.answer("\n".join(lines))
 
 
 # ----------------------- Обработчики типов -----------------------
@@ -169,6 +208,7 @@ async def process_file(message: Message, file_type: str):
 
     # Ответ пользователю
     if success:
+        save_uploaded_file(message.from_user.id, file_name)
         info = get_disk_info(token)
         free_space_gb = info["free_space"] / 1024**3
         used_space_gb = info["used_space"] / 1024**3
@@ -177,8 +217,7 @@ async def process_file(message: Message, file_type: str):
         await message.reply(
             f"✅ Файл успешно загружен!\n\n"
             f"💾 Использовано: {used_space_gb:.2f} ГБ / {total_space_gb:.2f} ГБ\n"
-            f"🧭 Свободно: {free_space_gb:.2f} ГБ\n"
-            f"📥 Лимит загрузок на сегодня: не ограничен"
+            f"🧭 Свободно: {free_space_gb:.2f} ГБ"
         )
     else:
         await message.reply("❌ Ошибка при загрузке файла.")

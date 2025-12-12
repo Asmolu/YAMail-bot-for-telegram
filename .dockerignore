@@ -12,3 +12,4 @@ pytest_cache/
 .eggs/
 build/
 dist/
+локальный запуск.txt
