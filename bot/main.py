@@ -26,7 +26,7 @@ async def main():
     api_port = int(os.getenv("API_PORT", "8000"))
 
     server = uvicorn.Server(
-        uvicorn.Config("bot.server:app", host=api_host, port=api_port, log_level="info")
+        uvicorn.Config("web.server:app", host=api_host, port=api_port, log_level="info")
     )
 
     await asyncio.gather(dp.start_polling(bot), server.serve())

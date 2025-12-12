@@ -23,7 +23,8 @@ htmlcov/
 # OS files
 .DS_Store
 Thumbs.db
-
+data/users.db
+data/
 # Application
 *.log
 .tmp/
