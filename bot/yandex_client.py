@@ -1,23 +1,20 @@
+from typing import Dict
+
 import requests
-import os
 
 BASE_URL = "https://cloud-api.yandex.net/v1/disk"
 
 
-def get_token():
-    return os.getenv("YANDEX_TOKEN")
-
-
-def ensure_folder_exists(path: str):
-    headers = {"Authorization": f"OAuth {get_token()}"}
+def ensure_folder_exists(path: str, token: str) -> bool:
+    headers = {"Authorization": f"OAuth {token}"}
     resp = requests.put(f"{BASE_URL}/resources", headers=headers, params={"path": path})
     return resp.status_code in (201, 409)
 
 
-def upload_file_to_yandex(local_path: str, remote_path: str) -> bool:
-    headers = {"Authorization": f"OAuth {get_token()}"}
+def upload_file_to_yandex(local_path: str, remote_path: str, token: str) -> bool:
+    headers = {"Authorization": f"OAuth {token}"}
     folder = remote_path.split("/")[0]
-    ensure_folder_exists(folder)
+    ensure_folder_exists(folder, token)
 
     params = {"path": remote_path, "overwrite": "true"}
     resp = requests.get(f"{BASE_URL}/resources/upload", headers=headers, params=params)
@@ -35,9 +32,9 @@ def upload_file_to_yandex(local_path: str, remote_path: str) -> bool:
         return upload_resp.status_code in (201, 202)
 
 
-def get_disk_info():
+def get_disk_info(token: str) -> Dict[str, int]:
     """Возвращает данные о диске: свободное/занятое/всего"""
-    headers = {"Authorization": f"OAuth {get_token()}"}
+    headers = {"Authorization": f"OAuth {token}"}
     r = requests.get(BASE_URL, headers=headers)
     if r.status_code != 200:
         print("⚠️ Ошибка при запросе информации о диске:", r.status_code, r.text)

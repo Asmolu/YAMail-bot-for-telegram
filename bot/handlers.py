@@ -1,10 +1,19 @@
-from aiogram import Router, F
+from typing import Optional
+
+import requests
+from aiogram import F, Router
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
-from aiogram.filters import CommandStart
-from bot.yandex_client import upload_file_to_yandex, get_disk_info
+
+from bot.db import get_user_token, save_user_token
+from bot.yandex_client import get_disk_info, upload_file_to_yandex
 import os
 
 router = Router()
+
+YANDEX_AUTH_URL = "https://oauth.yandex.ru/authorize"
+YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
+
 
 def register_handlers(dp):
     dp.include_router(router)
@@ -26,23 +35,67 @@ async def start_cmd(message: Message):
     await message.answer(text)
 
 
+# 🔗 /connect
+@router.message(Command("connect"))
+async def connect_cmd(message: Message):
+    client_id = os.getenv("YANDEX_CLIENT_ID")
+    redirect_uri = os.getenv("YANDEX_REDIRECT_URI")
+
+    if not client_id:
+        await message.answer("⚠️ Client ID Яндекс.Диска не настроен. Обратитесь к администратору.")
+        return
+
+    params = [
+        f"response_type=code",
+        f"client_id={client_id}",
+    ]
+    if redirect_uri:
+        params.append(f"redirect_uri={redirect_uri}")
+    link = f"{YANDEX_AUTH_URL}?" + "&".join(params)
+
+    await message.answer(
+        "🔗 Для подключения Яндекс.Диска нажми:\n"
+        f"{link}\n\n"
+        "После подтверждения доступа отправь мне полученный *код авторизации* сюда.",
+        parse_mode="Markdown",
+    )
+
+
+# Принятие authorization_code
+@router.message(F.text.regexp(r"^[A-Za-z0-9\-_]{20,}$"))
+async def handle_auth_code(message: Message):
+    code = message.text.strip()
+    token = exchange_code_for_token(code)
+
+    if not token:
+        await message.answer("❌ Не удалось обменять код на токен. Попробуй ещё раз или проверь настройки.")
+        return
+
+    save_user_token(message.from_user.id, token)
+    await message.answer("✅ Успешно подключено! Теперь я буду сохранять файлы в твой Яндекс.Диск ☁️")
+
+
 # ----------------------- Обработчики типов -----------------------
 
 @router.message(F.document)
 async def handle_document(message: Message):
     await process_file(message, file_type="document")
 
+
 @router.message(F.photo)
 async def handle_photo(message: Message):
     await process_file(message, file_type="photo")
+
 
 @router.message(F.video)
 async def handle_video(message: Message):
     await process_file(message, file_type="video")
 
+
 @router.message(F.voice)
 async def handle_voice(message: Message):
     await process_file(message, file_type="voice")
+
 
 @router.message(F.sticker)
 async def handle_sticker(message: Message):
@@ -51,9 +104,38 @@ async def handle_sticker(message: Message):
 
 # ----------------------- Вспомогательная логика -----------------------
 
+def exchange_code_for_token(code: str) -> Optional[str]:
+    client_id = os.getenv("YANDEX_CLIENT_ID")
+    client_secret = os.getenv("YANDEX_CLIENT_SECRET")
+    redirect_uri = os.getenv("YANDEX_REDIRECT_URI")
+
+    if not client_id or not client_secret:
+        return None
+
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    if redirect_uri:
+        data["redirect_uri"] = redirect_uri
+
+    resp = requests.post(YANDEX_TOKEN_URL, data=data)
+    if resp.status_code != 200:
+        return None
+
+    return resp.json().get("access_token")
+
+
 async def process_file(message: Message, file_type: str):
     bot = message.bot
     file_name = ""
+
+    token = get_user_token(message.from_user.id)
+    if not token:
+        await message.reply("⚠️ Сначала подключи Яндекс.Диск через /connect.")
+        return
 
     # Определяем тип файла и имя
     if file_type == "document":
@@ -82,7 +164,7 @@ async def process_file(message: Message, file_type: str):
     await bot.download_file(file_path, local_path)
 
     # Загружаем на диск
-    success = upload_file_to_yandex(local_path, f"TelegramUploads/{file_name}")
+    success = upload_file_to_yandex(local_path, f"TelegramUploads/{file_name}", token)
 
     # Удаляем временный файл
     if os.path.exists(local_path):
@@ -90,7 +172,7 @@ async def process_file(message: Message, file_type: str):
 
     # Ответ пользователю
     if success:
-        info = get_disk_info()
+        info = get_disk_info(token)
         free_space_gb = info["free_space"] / 1024**3
         used_space_gb = info["used_space"] / 1024**3
         total_space_gb = info["total_space"] / 1024**3
