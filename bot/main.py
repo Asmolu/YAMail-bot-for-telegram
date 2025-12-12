@@ -10,6 +10,7 @@ from bot.handlers import register_handlers
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
+print("YANDEX_TOKEN:", os.getenv("YANDEX_TOKEN"))
 
 bot = Bot(token=os.getenv("TELEGRAM_TOKEN"))
 dp = Dispatcher()

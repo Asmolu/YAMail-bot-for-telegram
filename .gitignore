@@ -6,6 +6,11 @@ __pycache__/
 *.db
 *.sqlite3
 
+# Virtual environments
+venv/
+env/
+.venv/
+
 # Environment
 .env
 
@@ -13,3 +18,7 @@ __pycache__/
 /tmp/
 .idea/
 .vscode/
+
+# Logs / cache
+*.log
+.cache/
