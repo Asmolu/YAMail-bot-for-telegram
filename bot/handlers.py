@@ -39,7 +39,6 @@ async def start_cmd(message: Message):
 @router.message(Command("connect"))
 async def connect_cmd(message: Message):
     client_id = os.getenv("YANDEX_CLIENT_ID")
-    redirect_uri = os.getenv("YANDEX_REDIRECT_URI")
 
     if not client_id:
         await message.answer("⚠️ Client ID Яндекс.Диска не настроен. Обратитесь к администратору.")
@@ -50,16 +49,15 @@ async def connect_cmd(message: Message):
         f"client_id={client_id}",
         f"state={message.from_user.id}",
     ]
-    if redirect_uri:
-        params.append(f"redirect_uri={redirect_uri}")
     link = f"{YANDEX_AUTH_URL}?" + "&".join(params)
 
     await message.answer(
-        "🔗 Для подключения Яндекс.Диска нажми:\n"
-        f"{link}\n\n"
-        "После подтверждения доступа я подключу диск автоматически."
-        " Если что-то пойдёт не так, можно отправить *код авторизации* сюда вручную.",
-        parse_mode="Markdown",
+        "🔗 Подключаем Яндекс.Диск вручную:\n\n"
+        "1. Нажми на ссылку ниже и войди в аккаунт Яндекс.\n"
+        "2. Нажми \"Разрешить\" — откроется страница с кодом подтверждения.\n"
+        "3. Скопируй код (verification_code) и отправь его мне одним сообщением.\n\n"
+        f"Ссылка: {link}\n\n"
+        "Я жду код здесь и подключу диск сразу после того, как ты его пришлёшь.",
     )
 
 
@@ -109,7 +107,6 @@ async def handle_sticker(message: Message):
 def exchange_code_for_token(code: str) -> Optional[str]:
     client_id = os.getenv("YANDEX_CLIENT_ID")
     client_secret = os.getenv("YANDEX_CLIENT_SECRET")
-    redirect_uri = os.getenv("YANDEX_REDIRECT_URI")
 
     if not client_id or not client_secret:
         return None
@@ -120,8 +117,6 @@ def exchange_code_for_token(code: str) -> Optional[str]:
         "client_id": client_id,
         "client_secret": client_secret,
     }
-    if redirect_uri:
-        data["redirect_uri"] = redirect_uri
 
     resp = requests.post(YANDEX_TOKEN_URL, data=data)
     if resp.status_code != 200:
