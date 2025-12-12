@@ -64,7 +64,7 @@ Timeweb Cloud поддерживает развёртывание Docker/Compose
 ## Структура проекта
 - `bot/main.py` — запуск aiogram + FastAPI (uvicorn) в одном процессе.
 - `bot/handlers.py` — обработчики Telegram-команд и загрузок.
-- `bot/webapp.py` — FastAPI-приложение с OAuth callback.
+- `web/server.py` — FastAPI-приложение с OAuth callback.
 - `bot/db.py` — слой работы с SQLite (хранение токенов пользователей).
 - `bot/yandex_client.py` — работа с API Яндекс.Диска.
 - `bot/utils.py` — вспомогательные функции (включая `fibonacci`).
