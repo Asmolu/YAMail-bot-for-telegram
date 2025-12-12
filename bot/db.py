@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path(os.getenv("DATABASE_PATH", "users.db"))
+DB_PATH = Path(os.getenv("DATABASE_PATH", "data/users.db"))
 
 
 def init_db() -> None:
